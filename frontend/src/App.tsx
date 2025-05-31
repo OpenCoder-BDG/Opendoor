@@ -109,7 +109,8 @@ function App() {
               <Server className="h-8 w-8 text-blue-400" />
               <div>
                 <h1 className="text-2xl font-bold">Enhanced MCP Server</h1>
-                <p className="text-gray-400">Production-ready Multi-Container Platform</p>
+                <p className="text-gray-400">🤖 LLM-Only Multi-Container Platform</p>
+                <p className="text-sm text-yellow-400 font-medium">⚡ Designed for Large Language Models - Not Human Interaction</p>
               </div>
             </div>
             {healthStatus && (
@@ -179,8 +180,12 @@ function App() {
           <div className="p-6 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold">MCP Configuration</h2>
-                <p className="text-gray-400 mt-1">Copy this configuration to connect your LLM</p>
+                <h2 className="text-xl font-semibold">🤖 LLM Connection Configuration</h2>
+                <p className="text-gray-400 mt-1">Copy this JSON configuration for LLM programmatic access</p>
+                <div className="mt-2 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+                  <p className="text-yellow-300 text-sm font-medium">⚠️ FOR LLMs ONLY - Not for human interaction</p>
+                  <p className="text-yellow-200 text-xs mt-1">LLMs connect via SSE/STDIO protocols to execute code, use VS Code, and control browsers</p>
+                </div>
               </div>
               <CopyToClipboard text={configJson} onCopy={handleCopy}>
                 <button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
@@ -260,8 +265,25 @@ function App() {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-gray-400">
-          <p>Enhanced MCP Server - Production Ready Multi-Language Development Platform</p>
-          <p className="mt-2">Complete container isolation • 5GB memory per session • 15 programming languages</p>
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 className="text-lg font-semibold text-blue-400 mb-3">🤖 LLM-Exclusive MCP Server</h3>
+            <p className="text-gray-300">This server is designed exclusively for Large Language Models to:</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
+              <div className="bg-gray-700 rounded p-3">
+                <strong className="text-green-400">Execute Code</strong><br/>
+                15 programming languages with 5GB isolation
+              </div>
+              <div className="bg-gray-700 rounded p-3">
+                <strong className="text-blue-400">Use VS Code</strong><br/>
+                Full development environments & tools
+              </div>
+              <div className="bg-gray-700 rounded p-3">
+                <strong className="text-purple-400">Browser Automation</strong><br/>
+                Playwright control for web tasks
+              </div>
+            </div>
+            <p className="mt-4 text-yellow-300 font-medium">⚡ LLMs connect programmatically - No human UI needed</p>
+          </div>
         </footer>
       </div>
     </div>
