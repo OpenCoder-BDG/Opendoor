@@ -15,6 +15,9 @@ export class ConfigService {
 
   async getPublicConfig(): Promise<any> {
     return {
+      name: "Enhanced MCP Server",
+      description: "LLM-Exclusive Multi-Container Platform for Code Execution, VS Code, and Browser Automation",
+      target_audience: "Large Language Models (LLMs) - NOT for human interaction",
       sse_servers: [this.sseUrl],
       stdio_servers: [
         {
@@ -28,12 +31,23 @@ export class ConfigService {
           ]
         }
       ],
-      capabilities: {
-        tools: await this.getAvailableTools(),
-        sessions: this.getSessionTypes(),
-        languages: Object.keys(SUPPORTED_LANGUAGES),
-        memory_per_session: "5GB",
-        isolation: "complete_container_isolation",
+      llm_capabilities: {
+        code_execution: {
+          languages: Object.keys(SUPPORTED_LANGUAGES),
+          memory_per_session: "5GB",
+          isolation: "complete_container_isolation"
+        },
+        development_environments: {
+          vscode_sessions: "Full web IDE with extensions",
+          memory_per_session: "5GB",
+          features: ["git", "terminal", "debugger", "extensions"]
+        },
+        browser_automation: {
+          playwright_sessions: "Programmatic browser control",
+          browsers: ["chromium", "firefox", "webkit"],
+          memory_per_session: "5GB",
+          features: ["screenshots", "pdf_generation", "network_interception"]
+        },
         security: {
           network_isolation: true,
           filesystem_isolation: true,
@@ -41,6 +55,7 @@ export class ConfigService {
           code_validation: true
         }
       },
+      tools: await this.getAvailableTools(),
       endpoints: {
         base: this.baseUrl,
         sse: this.sseUrl,
@@ -48,7 +63,8 @@ export class ConfigService {
         health: `${this.baseUrl}/health`,
         sessions: `${this.baseUrl}/sessions`,
         config: `${this.baseUrl}/config`
-      }
+      },
+      usage_note: "This server is designed exclusively for LLM programmatic access via SSE/STDIO protocols. No human interaction interface is provided."
     };
   }
 
@@ -57,26 +73,38 @@ export class ConfigService {
       server_info: {
         name: "Enhanced MCP Server",
         version: "1.0.0",
-        description: "Production-ready multi-language development platform with VS Code and Playwright integration"
+        description: "LLM-Exclusive multi-container platform for programmatic code execution, VS Code environments, and browser automation",
+        target: "Large Language Models (LLMs) - Programmatic access only"
       },
-      capabilities: {
-        tools: {
-          listChanged: false
+      llm_tools: {
+        code_execution: {
+          enabled: true,
+          languages: Object.keys(SUPPORTED_LANGUAGES).length,
+          isolation: "complete_container"
         },
-        sessions: {
-          execution: true,
-          vscode: true,
-          playwright: true
+        vscode_environments: {
+          enabled: true,
+          features: ["web_ide", "extensions", "git", "terminal", "debugger"]
         },
-        resources: {
-          memory_per_session: "5GB",
-          cpu_per_session: "2 cores",
-          network_isolation: true,
-          filesystem_isolation: true
+        browser_automation: {
+          enabled: true,
+          engines: ["chromium", "firefox", "webkit"],
+          capabilities: ["screenshots", "pdf_generation", "automation"]
         }
       },
+      resources: {
+        memory_per_session: "5GB",
+        cpu_per_session: "2 cores",
+        network_isolation: true,
+        filesystem_isolation: true,
+        concurrent_sessions: "unlimited"
+      },
       supported_languages: SUPPORTED_LANGUAGES,
-      session_types: this.getSessionTypes()
+      access_methods: {
+        sse: "Server-Sent Events for real-time LLM communication",
+        stdio: "Standard I/O for batch LLM operations"
+      },
+      usage_model: "LLMs connect programmatically to execute code, manage development environments, and control browsers"
     };
   }
 
