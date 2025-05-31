@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Complete deployment script for MCP Server to GCP
+# Complete deployment script for Opendoor MCP to GCP
 set -e
 
-echo "🚀 Starting Enhanced MCP Server deployment to GCP..."
+echo "🚀 Starting Opendoor MCP deployment to GCP..."
 
 # Check if gcloud is installed and authenticated
 if ! command -v gcloud &> /dev/null; then
@@ -25,11 +25,11 @@ PROJECT_ID="capable-acrobat-460705-t1"
 REGION="us-central1"
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/mcp-server"
 
-echo "🏗️ Building main MCP server..."
+echo "🏗️ Building Opendoor MCP server..."
 docker build -t ${REGISTRY}/mcp-server:latest .
 docker push ${REGISTRY}/mcp-server:latest
 
-echo "🌐 Building frontend..."
+echo "🌐 Building Opendoor MCP documentation frontend..."
 docker build -f frontend/Dockerfile -t ${REGISTRY}/mcp-frontend:latest frontend/
 docker push ${REGISTRY}/mcp-frontend:latest
 
@@ -55,12 +55,12 @@ cd ..
 echo ""
 echo "🎉 Deployment completed successfully!"
 echo "=================================="
-echo "🔗 MCP Server URL: ${MCP_SERVER_URL}"
-echo "🌐 Frontend URL: ${FRONTEND_URL}"
-echo "📋 Configuration: ${FRONTEND_URL}/config"
+echo "🔗 Opendoor MCP Server URL: ${MCP_SERVER_URL}"
+echo "🌐 Documentation Frontend URL: ${FRONTEND_URL}"
+echo "📋 LLM Configuration: ${FRONTEND_URL}/config"
 echo ""
-echo "✅ Your Enhanced MCP Server is now live!"
-echo "💡 Use the frontend URL to get the JSON configuration for LLM connections"
+echo "✅ Your Opendoor MCP platform is now live!"
+echo "💡 Visit the documentation frontend to get JSON configuration for LLM connections"
 echo ""
 echo "🔧 Available endpoints:"
 echo "   • SSE: wss://${MCP_SERVER_URL#https://}/mcp/sse"

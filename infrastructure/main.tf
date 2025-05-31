@@ -312,6 +312,16 @@ resource "google_cloud_run_v2_service" "mcp_frontend" {
         value = google_cloud_run_v2_service.mcp_server.uri
       }
 
+      env {
+        name  = "REACT_APP_SITE_NAME"
+        value = "Opendoor MCP"
+      }
+
+      env {
+        name  = "REACT_APP_SITE_DESCRIPTION"
+        value = "LLM-Exclusive Multi-Container Platform"
+      }
+
       resources {
         limits = {
           cpu    = "1"
