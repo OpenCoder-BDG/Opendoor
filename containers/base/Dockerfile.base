@@ -1,0 +1,42 @@
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV TZ=UTC
+
+# Install base dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    vim \
+    nano \
+    htop \
+    unzip \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    software-properties-common \
+    build-essential \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -s /bin/bash -u 1000 mcpuser && \
+    mkdir -p /workspace && \
+    chown mcpuser:mcpuser /workspace
+
+# Set up workspace
+WORKDIR /workspace
+USER mcpuser
+
+# Health check script
+COPY --chown=mcpuser:mcpuser healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
+
+CMD ["/bin/bash"]

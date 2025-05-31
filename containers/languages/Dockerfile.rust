@@ -1,0 +1,23 @@
+FROM mcp-base:latest
+
+USER root
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Install common Rust tools
+RUN /root/.cargo/bin/rustup component add rustfmt clippy \
+    && /root/.cargo/bin/cargo install cargo-watch cargo-edit
+
+USER mcpuser
+WORKDIR /workspace
+
+# Set up Rust for user
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/home/mcpuser/.cargo/bin:$PATH"
+
+# Initialize Cargo project
+RUN cargo init .
+
+CMD ["cargo", "run"]

@@ -1,0 +1,90 @@
+steps:
+  # Build base images
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/base/Dockerfile.base', '-t', 'mcp-base:latest', 'containers/base/']
+
+  # Build language containers
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/languages/Dockerfile.python', '-t', '${_REGISTRY}/mcp-python:latest', 'containers/languages/']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/languages/Dockerfile.javascript', '-t', '${_REGISTRY}/mcp-javascript:latest', 'containers/languages/']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/languages/Dockerfile.typescript', '-t', '${_REGISTRY}/mcp-typescript:latest', 'containers/languages/']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/languages/Dockerfile.java', '-t', '${_REGISTRY}/mcp-java:latest', 'containers/languages/']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/languages/Dockerfile.rust', '-t', '${_REGISTRY}/mcp-rust:latest', 'containers/languages/']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/languages/Dockerfile.go', '-t', '${_REGISTRY}/mcp-go:latest', 'containers/languages/']
+
+  # Build VS Code container
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/vscode/Dockerfile', '-t', '${_REGISTRY}/mcp-vscode:latest', 'containers/vscode/']
+
+  # Build Playwright container
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'containers/playwright/Dockerfile', '-t', '${_REGISTRY}/mcp-playwright:latest', 'containers/playwright/']
+
+  # Build main MCP server
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGISTRY}/mcp-server:latest', '.']
+
+  # Build frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'frontend/Dockerfile', '-t', '${_REGISTRY}/mcp-frontend:latest', 'frontend/']
+
+  # Push all images
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-python']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-javascript']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-typescript']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-java']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-rust']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-go']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-vscode']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-playwright']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-server']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGISTRY}/mcp-frontend']
+
+# Deploy with Terraform
+  - name: 'hashicorp/terraform:1.5'
+    dir: 'infrastructure'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        terraform init
+        terraform plan
+        terraform apply -auto-approve
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGISTRY: 'us-central1-docker.pkg.dev/capable-acrobat-460705-t1/mcp-server'
+
+timeout: 3600s

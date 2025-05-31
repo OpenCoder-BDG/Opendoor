@@ -1,0 +1,16 @@
+FROM mcp-base:latest
+
+USER root
+
+# Install Clang and Objective-C runtime
+RUN apt-get update && apt-get install -y \
+    clang \
+    libobjc-4.6-dev \
+    gobjc \
+    gnustep-devel \
+    && rm -rf /var/lib/apt/lists/*
+
+USER mcpuser
+WORKDIR /workspace
+
+CMD ["clang"]
