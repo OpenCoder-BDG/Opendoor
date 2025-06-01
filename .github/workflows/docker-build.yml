@@ -26,6 +26,9 @@ jobs:
           - name: mcp-server
             dockerfile: Dockerfile
             context: .
+          - name: mcp-all-in-one
+            dockerfile: Dockerfile.all-in-one
+            context: .
           - name: mcp-python
             dockerfile: containers/languages/Dockerfile.python
             context: containers/languages

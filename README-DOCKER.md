@@ -1,15 +1,32 @@
 # 🐳 Docker Quick Start - Enhanced MCP Server
 
-**One-command deployment for your optimized MCP Server with GitHub Container Registry**
+**One-command deployment for your optimized MCP Server**
 
-## 🚀 Quick Start (Recommended)
+## 🚀 Super Simple: One Container (Recommended)
+
+**Everything in a single container - MCP server + Redis + VS Code + All languages:**
 
 ```bash
-# Download and run everything with one command
-curl -fsSL https://raw.githubusercontent.com/Create-fun-work/Opendoor/main/scripts/quick-start.sh | bash
+# Download and run with one command
+curl -fsSL https://raw.githubusercontent.com/Create-fun-work/Opendoor/main/scripts/one-docker-start.sh | bash
 ```
 
-**That's it!** Your MCP server will be running at `http://localhost:3000` 🎉
+**Or build and run manually:**
+```bash
+# Clone repo and build
+git clone https://github.com/Create-fun-work/Opendoor.git
+cd Opendoor
+docker build -f Dockerfile.all-in-one -t mcp-server-all-in-one .
+
+# Run everything in one container
+docker run -d --name mcp-server \
+  -p 3000:3000 -p 8080:80 -p 8081:8080 \
+  -v $(pwd)/sessions:/app/sessions \
+  -v $(pwd)/workspaces:/app/workspaces \
+  mcp-server-all-in-one
+```
+
+**That's it!** Your complete MCP server is running at `http://localhost:3000` 🎉
 
 ## 📦 Manual Pull & Run
 
@@ -39,10 +56,27 @@ docker run -d --name mcp-server \
   ghcr.io/create-fun-work/opendoor/mcp-server:latest
 ```
 
+## 📦 Direct Docker Pull Commands
+
+**All-in-One Container (Easiest):**
+```bash
+# Everything included: MCP server + Redis + VS Code + All languages
+docker pull ghcr.io/create-fun-work/opendoor/mcp-all-in-one:latest
+
+# Run the complete stack
+docker run -d --name mcp-server \
+  -p 3000:3000 -p 8080:80 -p 8081:8080 \
+  ghcr.io/create-fun-work/opendoor/mcp-all-in-one:latest
+```
+
 ## 🏗️ Available Images
 
-All images are automatically built and available at GitHub Container Registry:
+**All-in-One (Recommended):**
+| Image | Purpose | Pull Command |
+|-------|---------|--------------|
+| **mcp-all-in-one** | Complete MCP server with everything | `docker pull ghcr.io/create-fun-work/opendoor/mcp-all-in-one:latest` |
 
+**Individual Components (Advanced):**
 | Image | Purpose | Pull Command |
 |-------|---------|--------------|
 | **mcp-server** | Main MCP server | `docker pull ghcr.io/create-fun-work/opendoor/mcp-server:latest` |
@@ -154,14 +188,27 @@ docker-compose -f docker-compose.production.yml pull
 docker-compose -f docker-compose.production.yml up -d
 ```
 
-## 📊 Performance Features
+## 🔧 What You Get (All-in-One Container)
+
+✅ **Complete MCP Server** - API, WebSocket, STDIO endpoints  
+✅ **Built-in Redis** - Caching and session storage  
+✅ **VS Code Server** - Full web-based IDE at :8081  
+✅ **15+ Programming Languages** - Python, Node.js, Java, C++, Rust, Go, Swift, C#, PHP, Perl, Ruby, Lua  
+✅ **Browser Automation** - Playwright with Chromium, Firefox, WebKit  
+✅ **Package Managers** - pip, npm, maven, gradle, cargo, etc.  
+✅ **Development Tools** - Git, curl, wget, build tools  
+✅ **Auto-restart** - Supervisor manages all services  
+✅ **Health monitoring** - Built-in health checks  
+✅ **Production ready** - Optimized for LLM integration
+
+## 📊 Performance Features (Individual Containers)
 
 ✅ **3x Faster Boot Times** - Parallel initialization  
 ✅ **Auto-scaling** - Queue-based execution management  
 ✅ **Redis Caching** - Multi-layer performance optimization  
 ✅ **Health Monitoring** - Built-in health checks  
 ✅ **Security** - Enhanced validation and rate limiting  
-✅ **Multi-architecture** - AMD64 and ARM64 support  
+✅ **Multi-architecture** - AMD64 support
 
 ## 🔧 Troubleshooting
 
