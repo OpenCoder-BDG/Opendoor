@@ -27,7 +27,7 @@ RUN code-server --install-extension ms-python.python \
 
 # Configure VS Code settings
 RUN mkdir -p /home/coder/.local/share/code-server/User
-COPY containers/vscode/settings.json /home/coder/.local/share/code-server/User/
+COPY settings.json /home/coder/.local/share/code-server/User/
 
 # Set workspace permissions
 RUN mkdir -p /workspace && \
