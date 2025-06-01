@@ -121,8 +121,7 @@ const wss = new WebSocketServer({
     threshold: 1024,
     concurrencyLimit: 10
   },
-  clientTracking: true,
-  maxConnections: 1000
+  clientTracking: true
 });
 
 // Handle WebSocket connections for SSE with optimized error handling

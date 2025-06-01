@@ -341,117 +341,114 @@ export class ContainerManager {
   }
 
   async executeCode(sessionId: string, params: CodeExecutionParams): Promise<ExecutionResult> {
-    // Use execution queue for better resource management
-    return this.executionQueue.add(async (): Promise<ExecutionResult> => {
-      const container = this.containers.get(sessionId);
-      if (!container) {
-        throw new Error(`Container not found for session ${sessionId}`);
-      }
+    const container = this.containers.get(sessionId);
+    if (!container) {
+      throw new Error(`Container not found for session ${sessionId}`);
+    }
 
-      const langConfig = SUPPORTED_LANGUAGES[params.language];
-      if (!langConfig) {
-        throw new Error(`Unsupported language: ${params.language}`);
-      }
+    const langConfig = SUPPORTED_LANGUAGES[params.language];
+    if (!langConfig) {
+      throw new Error(`Unsupported language: ${params.language}`);
+    }
 
-      const fileName = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${langConfig.fileExtension}`;
-      const filePath = `/workspace/${fileName}`;
+    const fileName = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${langConfig.fileExtension}`;
+    const filePath = `/workspace/${fileName}`;
 
-      try {
-        // Optimize file writing with direct container operations
-        const writeCommand = `echo '${params.code.replace(/'/g, "'\\''")}' > ${filePath}`;
-        
-        const writeExec = await container.exec({
-          Cmd: ['sh', '-c', writeCommand],
-          AttachStdout: true,
-          AttachStderr: true
+    try {
+      // Optimize file writing with direct container operations
+      const writeCommand = `echo '${params.code.replace(/'/g, "'\\''")}' > ${filePath}`;
+      
+      const writeExec = await container.exec({
+        Cmd: ['sh', '-c', writeCommand],
+        AttachStdout: true,
+        AttachStderr: true
+      });
+
+      await writeExec.start({});
+
+      // Execute the code with enhanced error handling
+      const executeCommand = langConfig.executeCommand.replace('{file}', filePath);
+      const execRun = await container.exec({
+        Cmd: ['sh', '-c', executeCommand],
+        AttachStdout: true,
+        AttachStderr: true,
+        WorkingDir: '/workspace'
+      });
+
+      const startTime = Date.now();
+      const execStream = await execRun.start({});
+      
+      let stdout = '';
+      let stderr = '';
+      const maxOutputSize = 10 * 1024 * 1024; // 10MB max output
+
+      return new Promise<ExecutionResult>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          execStream.destroy();
+          reject(new Error('Execution timeout exceeded'));
+        }, params.timeout || 30000);
+
+        execStream.on('data', (chunk: Buffer) => {
+          const header = chunk.readUInt8(0);
+          const data = chunk.slice(8).toString();
+          
+          if (header === 1) { // stdout
+            stdout += data;
+            if (stdout.length > maxOutputSize) {
+              stdout = stdout.slice(0, maxOutputSize) + '\n... (output truncated)';
+              execStream.destroy();
+              clearTimeout(timeout);
+              reject(new Error('Output size limit exceeded'));
+              return;
+            }
+          } else if (header === 2) { // stderr
+            stderr += data;
+            if (stderr.length > maxOutputSize) {
+              stderr = stderr.slice(0, maxOutputSize) + '\n... (error output truncated)';
+            }
+          }
         });
 
-        await writeExec.start({});
-
-        // Execute the code with enhanced error handling
-        const executeCommand = langConfig.executeCommand.replace('{file}', filePath);
-        const execRun = await container.exec({
-          Cmd: ['sh', '-c', executeCommand],
-          AttachStdout: true,
-          AttachStderr: true,
-          WorkingDir: '/workspace'
-        });
-
-        const startTime = Date.now();
-        const execStream = await execRun.start({});
-        
-        let stdout = '';
-        let stderr = '';
-        const maxOutputSize = 10 * 1024 * 1024; // 10MB max output
-
-        return new Promise<ExecutionResult>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            execStream.destroy();
-            reject(new Error('Execution timeout exceeded'));
-          }, params.timeout || 30000);
-
-          execStream.on('data', (chunk: Buffer) => {
-            const header = chunk.readUInt8(0);
-            const data = chunk.slice(8).toString();
+        execStream.on('end', async () => {
+          clearTimeout(timeout);
+          const executionTime = Date.now() - startTime;
+          
+          try {
+            const inspectResult = await execRun.inspect();
             
-            if (header === 1) { // stdout
-              stdout += data;
-              if (stdout.length > maxOutputSize) {
-                stdout = stdout.slice(0, maxOutputSize) + '\n... (output truncated)';
-                execStream.destroy();
-                clearTimeout(timeout);
-                reject(new Error('Output size limit exceeded'));
-                return;
+            // Cleanup temporary file asynchronously
+            setImmediate(async () => {
+              try {
+                const cleanupExec = await container.exec({
+                  Cmd: ['rm', '-f', filePath]
+                });
+                await cleanupExec.start({});
+              } catch (error) {
+                this.logger.debug(`Failed to cleanup temp file ${filePath}:`, error);
               }
-            } else if (header === 2) { // stderr
-              stderr += data;
-              if (stderr.length > maxOutputSize) {
-                stderr = stderr.slice(0, maxOutputSize) + '\n... (error output truncated)';
-              }
-            }
-          });
+            });
 
-          execStream.on('end', async () => {
-            clearTimeout(timeout);
-            const executionTime = Date.now() - startTime;
-            
-            try {
-              const inspectResult = await execRun.inspect();
-              
-              // Cleanup temporary file asynchronously
-              setImmediate(async () => {
-                try {
-                  const cleanupExec = await container.exec({
-                    Cmd: ['rm', '-f', filePath]
-                  });
-                  await cleanupExec.start({});
-                } catch (error) {
-                  this.logger.debug(`Failed to cleanup temp file ${filePath}:`, error);
-                }
-              });
-
-              resolve({
-                stdout: stdout.trim(),
-                stderr: stderr.trim(),
-                exitCode: inspectResult.ExitCode || 0,
-                executionTime,
-                memoryUsage: await this.getContainerMemoryUsage(container)
-              });
-            } catch (error) {
-              reject(error);
-            }
-          });
-
-          execStream.on('error', (error: Error) => {
-            clearTimeout(timeout);
+            resolve({
+              stdout: stdout.trim(),
+              stderr: stderr.trim(),
+              exitCode: inspectResult.ExitCode || 0,
+              executionTime,
+              memoryUsage: await this.getContainerMemoryUsage(container)
+            });
+          } catch (error) {
             reject(error);
-          });
+          }
         });
-      } catch (error) {
-        this.logger.error(`Error executing code in session ${sessionId}:`, error);
-        throw error;
-      }
-    });
+
+        execStream.on('error', (error: Error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
+    } catch (error) {
+      this.logger.error(`Error executing code in session ${sessionId}:`, error);
+      throw error;
+    }
   }
 
   async getVSCodeUrl(sessionId: string): Promise<string> {
