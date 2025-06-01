@@ -21,7 +21,6 @@ export class McpServer {
     }
   ) {
     this.rateLimiter = new RateLimiterMemory({
-      keyspace: 'mcp-server',
       points: 100, // Number of requests
       duration: 60, // Per 60 seconds
     });

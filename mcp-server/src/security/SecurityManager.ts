@@ -3,12 +3,17 @@ import { McpRequest } from '../types/McpTypes';
 import { Logger } from '../utils/Logger';
 import crypto from 'crypto';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
+import Joi from 'joi';
+import NodeCache from 'node-cache';
 
 export class SecurityManager {
   private logger = Logger.getInstance();
   private allowedOrigins: Set<string>;
   private apiKeys: Set<string>;
   private rateLimiter: RateLimiterMemory;
+  private validationCache: NodeCache;
+  private requestSchema: Joi.ObjectSchema;
+  private codePatternCache = new Map<string, RegExp>();
 
   constructor() {
     this.allowedOrigins = new Set(
@@ -19,10 +24,45 @@ export class SecurityManager {
       process.env.API_KEYS?.split(',') || []
     );
 
+    // Enhanced rate limiting with different tiers
     this.rateLimiter = new RateLimiterMemory({
-      keyspace: 'security',
-      points: 50, // Number of requests
+      points: parseInt(process.env.RATE_LIMIT_POINTS || '100'), 
       duration: 60, // Per 60 seconds
+      blockDuration: parseInt(process.env.RATE_LIMIT_BLOCK_DURATION || '300'), // 5 minutes block
+    });
+
+    // Cache for validation results
+    this.validationCache = new NodeCache({
+      stdTTL: 300, // 5 minutes
+      checkperiod: 60
+    });
+
+    // Joi schema for request validation
+    this.requestSchema = Joi.object({
+      id: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.allow(null)).required(),
+      method: Joi.string().required().pattern(/^[a-zA-Z_\/]+$/),
+      params: Joi.object().unknown(true).optional()
+    });
+
+    // Pre-compile dangerous patterns for performance
+    this.initializeDangerousPatterns();
+  }
+
+  private initializeDangerousPatterns(): void {
+    const patterns = [
+      'child_process',
+      'subprocess',
+      'os\\.system',
+      'eval\\s*\\(',
+      'exec\\s*\\(',
+      'shell_exec',
+      '__import__.*os',
+      'Runtime\\.getRuntime',
+      'ProcessBuilder'
+    ];
+
+    patterns.forEach(pattern => {
+      this.codePatternCache.set(pattern, new RegExp(pattern, 'i'));
     });
   }
 
@@ -97,42 +137,49 @@ export class SecurityManager {
   }
 
   validateCodeExecution(code: string, language: string): { valid: boolean; reason?: string } {
-    // Basic code validation rules
-    const dangerousPatterns = [
-      /require\s*\(\s*['"]child_process['"]\s*\)/,
-      /import\s+.*child_process/,
-      /exec\s*\(/,
-      /eval\s*\(/,
-      /system\s*\(/,
-      /shell_exec\s*\(/,
-      /passthru\s*\(/,
-      /proc_open\s*\(/,
-      /popen\s*\(/,
-      /file_get_contents\s*\(\s*['"]\/proc\//,
-      /file_get_contents\s*\(\s*['"]\/sys\//,
-      /file_get_contents\s*\(\s*['"]\/etc\//,
-      /__import__\s*\(\s*['"]os['"]\s*\)/,
-      /__import__\s*\(\s*['"]subprocess['"]\s*\)/,
-      /subprocess\./,
-      /os\.system/,
-      /os\.popen/,
-      /Runtime\.getRuntime\(\)\.exec/,
-      /ProcessBuilder/,
-      /\$\(/,  // Shell command substitution
-      /`[^`]*`/, // Backtick execution
-    ];
+    // Check validation cache first
+    const cacheKey = crypto.createHash('md5').update(code + language).digest('hex');
+    const cached = this.validationCache.get<{ valid: boolean; reason?: string }>(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(code)) {
+    // Enhanced code validation with performance optimization
+    const result = this.performCodeValidation(code, language);
+    
+    // Cache the result
+    this.validationCache.set(cacheKey, result);
+    
+    return result;
+  }
+
+  private performCodeValidation(code: string, language: string): { valid: boolean; reason?: string } {
+    // Use pre-compiled patterns for better performance
+    for (const [patternName, regex] of this.codePatternCache) {
+      if (regex.test(code)) {
         return {
           valid: false,
-          reason: `Potentially dangerous code pattern detected: ${pattern.source}`
+          reason: `Dangerous pattern detected: ${patternName}`
         };
       }
     }
 
-    // Language-specific validation
-    switch (language) {
+    // Additional pattern checks
+    const additionalPatterns = [
+      { pattern: /\$\(/, reason: 'Shell command substitution not allowed' },
+      { pattern: /`[^`]*`/, reason: 'Backtick execution not allowed' },
+      { pattern: /file_get_contents\s*\(\s*['"]\/(?:proc|sys|etc)\//, reason: 'System file access not allowed' },
+      { pattern: /open\s*\(\s*['"]\/(?:dev|proc|sys)\//, reason: 'System device access not allowed' }
+    ];
+
+    for (const { pattern, reason } of additionalPatterns) {
+      if (pattern.test(code)) {
+        return { valid: false, reason };
+      }
+    }
+
+    // Language-specific validation with enhanced checks
+    switch (language.toLowerCase()) {
       case 'python':
         return this.validatePythonCode(code);
       case 'javascript':
@@ -140,10 +187,53 @@ export class SecurityManager {
         return this.validateJavaScriptCode(code);
       case 'bash':
       case 'shell':
+      case 'sh':
         return { valid: false, reason: 'Shell execution not allowed' };
+      case 'java':
+        return this.validateJavaCode(code);
+      case 'c':
+      case 'cpp':
+      case 'c++':
+        return this.validateCCode(code);
       default:
         return { valid: true };
     }
+  }
+
+  private validateJavaCode(code: string): { valid: boolean; reason?: string } {
+    const javaPatterns = [
+      { pattern: /Runtime\.getRuntime\(\)/, reason: 'Runtime access not allowed' },
+      { pattern: /ProcessBuilder/, reason: 'Process creation not allowed' },
+      { pattern: /System\.exit/, reason: 'System exit not allowed' },
+      { pattern: /new\s+File\s*\(\s*['"]\//, reason: 'Absolute file paths not allowed' },
+      { pattern: /FileInputStream.*\//, reason: 'System file access not allowed' }
+    ];
+
+    for (const { pattern, reason } of javaPatterns) {
+      if (pattern.test(code)) {
+        return { valid: false, reason };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  private validateCCode(code: string): { valid: boolean; reason?: string } {
+    const cPatterns = [
+      { pattern: /system\s*\(/, reason: 'System calls not allowed' },
+      { pattern: /popen\s*\(/, reason: 'Process creation not allowed' },
+      { pattern: /execv?e?\s*\(/, reason: 'Exec functions not allowed' },
+      { pattern: /#include\s*<unistd\.h>/, reason: 'Unix system headers not allowed' },
+      { pattern: /fork\s*\(/, reason: 'Process forking not allowed' }
+    ];
+
+    for (const { pattern, reason } of cPatterns) {
+      if (pattern.test(code)) {
+        return { valid: false, reason };
+      }
+    }
+
+    return { valid: true };
   }
 
   generateSessionToken(): string {
@@ -162,22 +252,13 @@ export class SecurityManager {
   }
 
   private isValidMcpRequest(request: McpRequest): boolean {
-    // Basic MCP request structure validation
-    if (typeof request !== 'object' || request === null) {
+    try {
+      const { error } = this.requestSchema.validate(request);
+      return !error;
+    } catch (validationError) {
+      this.logger.warn('Request validation error:', validationError);
       return false;
     }
-
-    if (typeof request.method !== 'string' || !request.method) {
-      return false;
-    }
-
-    if (request.id !== null && 
-        typeof request.id !== 'string' && 
-        typeof request.id !== 'number') {
-      return false;
-    }
-
-    return true;
   }
 
   private sanitizeRequest(request: McpRequest): void {

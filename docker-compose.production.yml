@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    image: ghcr.io/create-fun-work/opendoor/mcp-server:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LOG_LEVEL=info
+      - MAX_CONCURRENT_EXECUTIONS=10
+      - RATE_LIMIT_POINTS=100
+      - SESSION_TIMEOUT_HOURS=24
+      - ALLOWED_ORIGINS=http://localhost:8080,https://your-domain.com
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./sessions:/app/sessions
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - REACT_APP_MCP_SERVER_URL=http://localhost:3000
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    depends_on:
+      - mcp-server
+
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-data:
+    driver: local
+  session-data:
+    driver: local
