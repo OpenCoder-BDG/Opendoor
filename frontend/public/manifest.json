@@ -1,6 +1,6 @@
 {
-  "short_name": "MCP Server",
-  "name": "Enhanced MCP Server Platform",
+  "short_name": "Opendoor MCP",
+  "name": "Opendoor MCP - LLM Multi-Container Platform",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,6 +10,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#3B82F6",
+  "background_color": "#1F2937"
 }

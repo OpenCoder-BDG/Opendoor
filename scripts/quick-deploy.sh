@@ -3,8 +3,8 @@
 # Quick deployment script for MCP Server
 set -e
 
-echo "🚀 Quick Deploy: Enhanced MCP Server to GCP"
-echo "============================================"
+echo "🚀 Quick Deploy: Opendoor MCP to GCP"
+echo "===================================="
 
 # Make scripts executable
 chmod +x scripts/*.sh
@@ -19,4 +19,4 @@ echo "Step 2: Deploying to GCP..."
 
 echo ""
 echo "🎉 Quick deployment completed!"
-echo "Your MCP Server is now live on Google Cloud Platform"
+echo "Your Opendoor MCP platform with beautiful documentation is now live on GCP!"
