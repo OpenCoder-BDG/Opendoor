@@ -1,36 +1,27 @@
-FROM mcr.microsoft.com/playwright:v1.40.0-focal
+FROM mcr.microsoft.com/playwright:v1.40.0-jammy
 
-USER root
-
-# Install additional dependencies
+# Install additional tools
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     nodejs \
     npm \
     curl \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python Playwright
-RUN pip3 install playwright pytest-playwright requests beautifulsoup4
-
-# Install Node.js Playwright
+# Install Playwright for Python and Node.js
+RUN pip install playwright beautifulsoup4 requests
 RUN npm install -g playwright @playwright/test
 
 # Install browsers
 RUN playwright install chromium firefox webkit
-RUN npx playwright install chromium firefox webkit
 
-# Create workspace
-RUN mkdir -p /workspace && chown -R pwuser:pwuser /workspace
+# Create workspace and user
+RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser
+RUN mkdir -p /workspace && chown mcpuser:mcpuser /workspace
 
-USER pwuser
+USER mcpuser
 WORKDIR /workspace
 
-# Create sample scripts
-COPY --chown=pwuser:pwuser playwright-examples/ /workspace/examples/
-
-EXPOSE 9222
-
-CMD ["python3", "-m", "http.server", "9222"]
+# Keep container running with browser available
+CMD ["tail", "-f", "/dev/null"]

@@ -1,29 +1,25 @@
-FROM python:3.11-slim
+FROM node:18-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
+    python3 \
     make \
+    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install common Python packages for LLM use cases
-RUN pip install --no-cache-dir \
-    requests \
-    numpy \
-    pandas \
-    matplotlib \
-    seaborn \
-    scikit-learn \
-    jupyter \
-    plotly \
-    beautifulsoup4 \
-    lxml \
-    openpyxl \
-    pillow \
-    python-dateutil \
-    pytz
+# Install global npm packages for LLM use cases
+RUN npm install -g \
+    typescript \
+    ts-node \
+    lodash \
+    axios \
+    moment \
+    uuid \
+    cheerio \
+    csv-parser \
+    express \
+    @types/node
 
 # Create workspace
 WORKDIR /workspace
