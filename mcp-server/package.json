@@ -1,0 +1,93 @@
+{
+  "name": "@opendoor/mcp-server",
+  "version": "1.0.0",
+  "description": "High-performance MCP server optimized for LLM integration with fast boot times and enhanced security",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prestart": "npm run build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "health": "curl -f http://localhost:3000/health || exit 1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dockerode": "^4.0.0",
+    "uuid": "^9.0.1",
+    "redis": "^4.6.10",
+    "winston": "^3.11.0",
+    "joi": "^17.11.0",
+    "rate-limiter-flexible": "^3.0.8",
+    "ioredis": "^5.3.2",
+    "p-queue": "^7.4.1",
+    "node-cache": "^5.1.2",
+    "compression": "^1.7.4",
+    "express-validator": "^7.0.1",
+    "express-rate-limit": "^7.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "@types/express": "^4.17.19",
+    "@types/ws": "^8.5.7",
+    "@types/uuid": "^9.0.5",
+    "@types/compression": "^1.7.4",
+    "typescript": "^5.2.2",
+    "ts-node": "^10.9.1",
+    "nodemon": "^3.0.1",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.5",
+    "eslint": "^8.50.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "large-language-models",
+    "docker",
+    "containers",
+    "code-execution",
+    "vscode",
+    "playwright",
+    "browser-automation",
+    "high-performance",
+    "fast-boot"
+  ],
+  "author": "Opendoor MCP Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Create-fun-work/Opendoor.git",
+    "directory": "mcp-server"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/src"],
+    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts",
+      "!src/**/*.spec.ts"
+    ]
+  }
+}
