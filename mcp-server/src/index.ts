@@ -119,8 +119,7 @@ const wss = new WebSocketServer({
   maxPayload: 10 * 1024 * 1024, // 10MB
   perMessageDeflate: {
     threshold: 1024,
-    concurrencyLimit: 10,
-    memLevel: 7
+    concurrencyLimit: 10
   },
   clientTracking: true,
   maxConnections: 1000
@@ -314,7 +313,7 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Unhandled rejection handler
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
 });
 
 // Uncaught exception handler
@@ -335,7 +334,7 @@ async function startServer() {
     const PORT = process.env.PORT || 3000;
     const HOST = process.env.HOST || '0.0.0.0';
     
-    server.listen(PORT, HOST, () => {
+    server.listen(parseInt(PORT as string), HOST, () => {
       logger.info(`🎉 MCP Server running on ${HOST}:${PORT}`);
       logger.info(`📡 SSE endpoint: ws://${HOST}:${PORT}/mcp/sse`);
       logger.info(`🔗 STDIO endpoint: http://${HOST}:${PORT}/mcp/stdio`);

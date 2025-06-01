@@ -26,7 +26,6 @@ export class SecurityManager {
 
     // Enhanced rate limiting with different tiers
     this.rateLimiter = new RateLimiterMemory({
-      keyspace: 'security',
       points: parseInt(process.env.RATE_LIMIT_POINTS || '100'), 
       duration: 60, // Per 60 seconds
       blockDuration: parseInt(process.env.RATE_LIMIT_BLOCK_DURATION || '300'), // 5 minutes block

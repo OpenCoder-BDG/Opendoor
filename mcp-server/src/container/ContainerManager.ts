@@ -342,7 +342,7 @@ export class ContainerManager {
 
   async executeCode(sessionId: string, params: CodeExecutionParams): Promise<ExecutionResult> {
     // Use execution queue for better resource management
-    return this.executionQueue.add(async () => {
+    return this.executionQueue.add(async (): Promise<ExecutionResult> => {
       const container = this.containers.get(sessionId);
       if (!container) {
         throw new Error(`Container not found for session ${sessionId}`);

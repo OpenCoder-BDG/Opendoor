@@ -23,24 +23,9 @@ jobs:
       fail-fast: false
       matrix:
         component:
-          - name: mcp-server
-            dockerfile: Dockerfile
+          - name: opendoor-mcp
+            dockerfile: Dockerfile.opendoor-mcp
             context: .
-          - name: mcp-all-in-one
-            dockerfile: Dockerfile.all-in-one
-            context: .
-          - name: mcp-python
-            dockerfile: containers/languages/Dockerfile.python
-            context: containers/languages
-          - name: mcp-node
-            dockerfile: containers/languages/Dockerfile.node
-            context: containers/languages
-          - name: mcp-vscode
-            dockerfile: containers/vscode/Dockerfile
-            context: containers/vscode
-          - name: mcp-playwright
-            dockerfile: containers/playwright/Dockerfile
-            context: containers/playwright
 
     steps:
       - name: Checkout repository
@@ -87,10 +72,9 @@ jobs:
     steps:
       - name: Summary
         run: |
-          echo "🎉 All Docker images built and pushed successfully!"
-          echo "📦 Available images:"
-          echo "- ghcr.io/${{ github.repository }}/mcp-server:latest"
-          echo "- ghcr.io/${{ github.repository }}/mcp-python:latest"  
-          echo "- ghcr.io/${{ github.repository }}/mcp-node:latest"
-          echo "- ghcr.io/${{ github.repository }}/mcp-vscode:latest"
-          echo "- ghcr.io/${{ github.repository }}/mcp-playwright:latest"
+          echo "🎉 Opendoor MCP Docker image built and pushed successfully!"
+          echo "📦 Available image:"
+          echo "- ghcr.io/${{ github.repository }}/opendoor-mcp:latest"
+          echo ""
+          echo "🚀 One container with everything built-in!"
+          echo "• Complete MCP Server + Redis + VS Code + All Languages"

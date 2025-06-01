@@ -17,12 +17,12 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-echo -e "${BLUE}🏗️  Building all-in-one MCP server container...${NC}"
-docker build -f Dockerfile.all-in-one -t mcp-server-all-in-one .
+echo -e "${BLUE}🏗️  Building Opendoor MCP server container...${NC}"
+docker build -f Dockerfile.opendoor-mcp -t opendoor-mcp .
 
 echo -e "${BLUE}🚀 Starting MCP server container...${NC}"
 docker run -d \
-    --name mcp-server \
+    --name opendoor-mcp \
     -p 3000:3000 \
     -p 8080:80 \
     -p 8081:8080 \
@@ -30,7 +30,7 @@ docker run -d \
     -v $(pwd)/workspaces:/app/workspaces \
     -v $(pwd)/logs:/app/logs \
     --restart unless-stopped \
-    mcp-server-all-in-one
+    opendoor-mcp
 
 echo -e "${YELLOW}⏳ Waiting for services to start...${NC}"
 sleep 15
@@ -39,7 +39,7 @@ sleep 15
 echo -e "${BLUE}🔍 Checking service health...${NC}"
 for i in {1..12}; do
     if curl -f http://localhost:3000/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ MCP Server is healthy and ready!${NC}"
+        echo -e "${GREEN}✅ Opendoor MCP Server is healthy and ready!${NC}"
         break
     else
         if [ $i -eq 12 ]; then
@@ -52,7 +52,7 @@ for i in {1..12}; do
 done
 
 echo ""
-echo -e "${GREEN}🎉 All-in-One MCP Server is running!${NC}"
+echo -e "${GREEN}🎉 Opendoor MCP Server is running!${NC}"
 echo ""
 echo -e "${BLUE}📡 Access Points:${NC}"
 echo "• MCP Server API:     http://localhost:3000"
@@ -64,10 +64,10 @@ echo "• MCP SSE Endpoint:   ws://localhost:3000/mcp/sse"
 echo "• MCP STDIO Endpoint: http://localhost:3000/mcp/stdio"
 echo ""
 echo -e "${BLUE}🔧 Container Management:${NC}"
-echo "• View logs:          docker logs -f mcp-server"
-echo "• Stop server:        docker stop mcp-server"
-echo "• Restart:            docker restart mcp-server"
-echo "• Remove:             docker rm -f mcp-server"
+echo "• View logs:          docker logs -f opendoor-mcp"
+echo "• Stop server:        docker stop opendoor-mcp"
+echo "• Restart:            docker restart opendoor-mcp"
+echo "• Remove:             docker rm -f opendoor-mcp"
 echo ""
 echo -e "${YELLOW}🤖 For LLM Integration:${NC}"
 echo "Visit http://localhost:3000/config to get the MCP configuration JSON"
