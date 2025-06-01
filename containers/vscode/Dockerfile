@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y \
 # Install VS Code extensions
 RUN code-server --install-extension ms-python.python \
     && code-server --install-extension ms-vscode.vscode-typescript-next \
-    && code-server --install-extension ms-vscode.vscode-json \
     && code-server --install-extension redhat.java \
     && code-server --install-extension ms-vscode.cpptools \
     && code-server --install-extension golang.go \

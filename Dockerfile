@@ -16,7 +16,7 @@ COPY mcp-server/package*.json ./
 COPY mcp-server/tsconfig.json ./
 
 # Install dependencies with cache optimization
-RUN pnpm install --frozen-lockfile --prod=false
+RUN pnpm install --no-frozen-lockfile --prod=false
 
 # Copy source code
 COPY mcp-server/src ./src
