@@ -146,14 +146,17 @@ COPY mcp-server/package*.json ./
 COPY mcp-server/pnpm-lock.yaml ./
 COPY mcp-server/tsconfig.json ./
 
-# Install MCP server dependencies
-RUN pnpm install --prod
+# Install MCP server dependencies (including dev dependencies for build)
+RUN pnpm install
 
 # Copy MCP server source code
 COPY mcp-server/src ./src
 
 # Build MCP server
 RUN pnpm run build
+
+# Prune dev dependencies after build
+RUN pnpm prune --prod
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/sessions /app/workspaces /var/log/supervisor \
