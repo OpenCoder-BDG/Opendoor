@@ -9,11 +9,20 @@ export class HealthService {
 
   constructor() {
     this.docker = new Docker({
-      socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock'
+      socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
+      // GCP optimizations
+      timeout: 30000,
+      version: 'v1.41' // Specify API version for consistency
     });
     
     this.redis = Redis.createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      // Connection optimizations
+      socket: {
+        connectTimeout: 5000,
+        commandTimeout: 3000,
+        keepAlive: true
+      }
     });
   }
 
@@ -32,7 +41,11 @@ export class HealthService {
       metrics: {
         active_containers: await this.getActiveContainerCount(),
         memory_usage: this.getMemoryUsage(),
-        cpu_usage: await this.getCpuUsage()
+        cpu_usage: await this.getCpuUsage(),
+        // GCP-specific metrics
+        node_env: process.env.NODE_ENV || 'development',
+        instance_id: process.env.INSTANCE_ID || 'unknown',
+        region: process.env.GOOGLE_CLOUD_REGION || 'unknown'
       }
     };
 

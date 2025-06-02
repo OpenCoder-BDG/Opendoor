@@ -10,14 +10,23 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private cache: NodeCache;
   private initialized = false;
+  private connectionPool: Map<string, any> = new Map(); // Connection pooling
+  private readonly maxPoolSize = 10;
+  private cleanupInterval?: NodeJS.Timeout;
 
   constructor() {
-    // Initialize local cache with 10 minute TTL
+    // Initialize local cache with optimized settings for GCP
     this.cache = new NodeCache({
-      stdTTL: 600, // 10 minutes
-      checkperiod: 120, // Check for expired keys every 2 minutes
-      maxKeys: 10000 // Maximum 10k sessions in cache
+      stdTTL: 900, // 15 minutes (longer for better performance)
+      checkperiod: 300, // Check for expired keys every 5 minutes
+      maxKeys: 5000, // Reduced for memory efficiency
+      useClones: false // Better performance, but be careful with mutations
     });
+
+    // Start cleanup interval for connection pool
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupConnectionPool();
+    }, 300000); // Every 5 minutes
   }
 
   async initialize(): Promise<SessionManager> {
@@ -26,7 +35,7 @@ export class SessionManager {
     }
 
     try {
-      // Initialize Redis with connection pooling and retry logic
+      // Initialize Redis with optimized settings for GCP
       this.redis = new Redis({
         host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -38,7 +47,15 @@ export class SessionManager {
         family: 4,
         connectTimeout: 5000,
         commandTimeout: 3000,
-        keepAlive: 30000
+        keepAlive: 30000,
+        // GCP optimizations
+        enableAutoPipelining: true, // Better performance for multiple commands
+        maxLoadingTimeout: 5000,
+        enableReadyCheck: true,
+        keyPrefix: 'mcp:', // Namespace for keys
+        // Connection pool settings for better resource management
+        maxRetriesPerRequest: 2, // Reduced for faster failover
+        retryDelayOnFailover: 50 // Faster retry
       });
 
       // Test connection
@@ -61,6 +78,31 @@ export class SessionManager {
 
     this.initialized = true;
     return this;
+  }
+
+  private cleanupConnectionPool(): void {
+    // Clean up old connections in the pool
+    const now = Date.now();
+    for (const [key, connection] of this.connectionPool.entries()) {
+      if (now - connection.lastUsed > 300000) { // 5 minutes
+        this.connectionPool.delete(key);
+      }
+    }
+  }
+
+  // Graceful shutdown
+  async shutdown(): Promise<void> {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+    
+    if (this.redis) {
+      await this.redis.quit();
+    }
+    
+    this.cache.flushAll();
+    this.sessions.clear();
+    this.connectionPool.clear();
   }
 
   async createSession(params: CreateSessionParams): Promise<Session> {

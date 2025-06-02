@@ -64,8 +64,16 @@ tfplan
 sessions/
 /app/sessions/
 
-# Credentials (keep the one we need)
-# infrastructure/gcp-credentials.json - keeping this for deployment
+# Google Cloud credentials and secrets
+service-account.json
+*.json.key
+gcp-credentials.json
+google-credentials.json
+deployment/gcp/service-account.json
+
+# Terraform variables
+terraform.tfvars
+terraform.tfvars.json
 
 # Temporary files
 tmp/

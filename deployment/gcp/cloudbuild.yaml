@@ -1,0 +1,123 @@
+# Google Cloud Build configuration for MCP Server Platform
+steps:
+  # Build the main application image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mcp-server:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mcp-server:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+    dir: 'mcp-server'
+
+  # Build container images for code execution
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mcp-python:latest'
+      - '-f'
+      - 'containers/python/Dockerfile'
+      - 'containers/python'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mcp-javascript:latest'
+      - '-f'
+      - 'containers/javascript/Dockerfile'
+      - 'containers/javascript'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mcp-vscode:latest'
+      - '-f'
+      - 'containers/vscode/Dockerfile'
+      - 'containers/vscode'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mcp-playwright:latest'
+      - '-f'
+      - 'containers/playwright/Dockerfile'
+      - 'containers/playwright'
+
+  # Push all images
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mcp-server:$BUILD_ID']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mcp-server:latest']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mcp-python:latest']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mcp-javascript:latest']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mcp-vscode:latest']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mcp-playwright:latest']
+
+  # Update instance template for rolling deployment
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Check if instance template exists and update it
+        if gcloud compute instance-templates describe mcp-template-${_ENVIRONMENT} --region=${_REGION} &>/dev/null; then
+          echo "Updating existing instance template..."
+          gcloud compute instance-templates create mcp-template-${_ENVIRONMENT}-$BUILD_ID \
+            --source-instance-template=mcp-template-${_ENVIRONMENT} \
+            --metadata=startup-script="$(cat deployment/gcp/terraform/startup-script.sh | sed 's/\${project_id}/$PROJECT_ID/g; s/\${environment}/${_ENVIRONMENT}/g')"
+          
+          # Update instance group to use new template
+          gcloud compute instance-group-managers set-instance-template \
+            mcp-group-${_ENVIRONMENT} \
+            --template=mcp-template-${_ENVIRONMENT}-$BUILD_ID \
+            --region=${_REGION}
+          
+          # Perform rolling update
+          gcloud compute instance-group-managers rolling-action start-update \
+            mcp-group-${_ENVIRONMENT} \
+            --version=template=mcp-template-${_ENVIRONMENT}-$BUILD_ID \
+            --max-surge=1 \
+            --max-unavailable=0 \
+            --region=${_REGION}
+        else
+          echo "No existing instance template found. Deployment will be handled by Terraform."
+        fi
+
+# Build options for performance
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+  logging: CLOUD_LOGGING_ONLY
+
+# Substitutions for environment-specific values
+substitutions:
+  _REGION: 'us-central1'
+  _ENVIRONMENT: 'prod'
+
+# Images to be pushed to Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/mcp-server:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/mcp-server:latest'
+  - 'gcr.io/$PROJECT_ID/mcp-python:latest'
+  - 'gcr.io/$PROJECT_ID/mcp-javascript:latest'
+  - 'gcr.io/$PROJECT_ID/mcp-vscode:latest'
+  - 'gcr.io/$PROJECT_ID/mcp-playwright:latest'
+
+# Build timeout
+timeout: '1800s'

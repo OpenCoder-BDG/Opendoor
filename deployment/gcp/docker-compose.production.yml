@@ -1,0 +1,486 @@
+# Production Docker Compose for Google Compute Engine
+# Optimized for 5GB memory per container, 0.5-1 CPU allocation
+version: '3.8'
+
+services:
+  # Main MCP Server application
+  mcp-server:
+    image: gcr.io/${PROJECT_ID}/mcp-server:latest
+    container_name: mcp-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "8080:8080"  # WebSocket port
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - GOOGLE_CLOUD_REGION=${GOOGLE_CLOUD_REGION:-us-central1}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LOG_LEVEL=info
+      - CONTAINER_MEMORY_LIMIT=5368709120  # 5GB in bytes
+      - CONTAINER_CPU_LIMIT=1.0
+      - PREWARM_POOL_SIZE=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - sessions_data:/app/sessions
+      - logs_data:/app/logs
+      - /tmp:/tmp:rw
+    networks:
+      - mcp-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 2048
+      nofile: 65536
+
+  # Pre-warmed Python containers (3 instances)
+  mcp-python-1:
+    image: gcr.io/${PROJECT_ID}/mcp-python:latest
+    container_name: mcp-python-1
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PIP_NO_CACHE_DIR=1
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined  # Required for some Python packages
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - python_cache:/root/.cache:rw
+    labels:
+      - "mcp.type=python"
+      - "mcp.prewarmed=true"
+
+  mcp-python-2:
+    image: gcr.io/${PROJECT_ID}/mcp-python:latest
+    container_name: mcp-python-2
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PIP_NO_CACHE_DIR=1
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - python_cache:/root/.cache:rw
+    labels:
+      - "mcp.type=python"
+      - "mcp.prewarmed=true"
+
+  mcp-python-3:
+    image: gcr.io/${PROJECT_ID}/mcp-python:latest
+    container_name: mcp-python-3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PIP_NO_CACHE_DIR=1
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - python_cache:/root/.cache:rw
+    labels:
+      - "mcp.type=python"
+      - "mcp.prewarmed=true"
+
+  # Pre-warmed JavaScript containers (3 instances)
+  mcp-javascript-1:
+    image: gcr.io/${PROJECT_ID}/mcp-javascript:latest
+    container_name: mcp-javascript-1
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - NODE_ENV=production
+      - NODE_OPTIONS=--max-old-space-size=4096
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - node_cache:/root/.npm:rw
+    labels:
+      - "mcp.type=javascript"
+      - "mcp.prewarmed=true"
+
+  mcp-javascript-2:
+    image: gcr.io/${PROJECT_ID}/mcp-javascript:latest
+    container_name: mcp-javascript-2
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - NODE_ENV=production
+      - NODE_OPTIONS=--max-old-space-size=4096
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - node_cache:/root/.npm:rw
+    labels:
+      - "mcp.type=javascript"
+      - "mcp.prewarmed=true"
+
+  mcp-javascript-3:
+    image: gcr.io/${PROJECT_ID}/mcp-javascript:latest
+    container_name: mcp-javascript-3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - NODE_ENV=production
+      - NODE_OPTIONS=--max-old-space-size=4096
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - node_cache:/root/.npm:rw
+    labels:
+      - "mcp.type=javascript"
+      - "mcp.prewarmed=true"
+
+  # Pre-warmed VS Code containers (3 instances)
+  mcp-vscode-1:
+    image: gcr.io/${PROJECT_ID}/mcp-vscode:latest
+    container_name: mcp-vscode-1
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - DISPLAY=:99
+      - VNC_RESOLUTION=1920x1080
+      - VNC_COL_DEPTH=24
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - vscode_data:/home/coder:rw
+    labels:
+      - "mcp.type=vscode"
+      - "mcp.prewarmed=true"
+
+  mcp-vscode-2:
+    image: gcr.io/${PROJECT_ID}/mcp-vscode:latest
+    container_name: mcp-vscode-2
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - DISPLAY=:99
+      - VNC_RESOLUTION=1920x1080
+      - VNC_COL_DEPTH=24
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - vscode_data:/home/coder:rw
+    labels:
+      - "mcp.type=vscode"
+      - "mcp.prewarmed=true"
+
+  mcp-vscode-3:
+    image: gcr.io/${PROJECT_ID}/mcp-vscode:latest
+    container_name: mcp-vscode-3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - DISPLAY=:99
+      - VNC_RESOLUTION=1920x1080
+      - VNC_COL_DEPTH=24
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - vscode_data:/home/coder:rw
+    labels:
+      - "mcp.type=vscode"
+      - "mcp.prewarmed=true"
+
+  # Pre-warmed Playwright containers (3 instances)
+  mcp-playwright-1:
+    image: gcr.io/${PROJECT_ID}/mcp-playwright:latest
+    container_name: mcp-playwright-1
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - playwright_cache:/ms-playwright:rw
+    labels:
+      - "mcp.type=playwright"
+      - "mcp.prewarmed=true"
+
+  mcp-playwright-2:
+    image: gcr.io/${PROJECT_ID}/mcp-playwright:latest
+    container_name: mcp-playwright-2
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - playwright_cache:/ms-playwright:rw
+    labels:
+      - "mcp.type=playwright"
+      - "mcp.prewarmed=true"
+
+  mcp-playwright-3:
+    image: gcr.io/${PROJECT_ID}/mcp-playwright:latest
+    container_name: mcp-playwright-3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    environment:
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nproc: 1024
+      nofile: 65536
+    tmpfs:
+      - /tmp:size=1G,noexec,nosuid,nodev
+    volumes:
+      - playwright_cache:/ms-playwright:rw
+    labels:
+      - "mcp.type=playwright"
+      - "mcp.prewarmed=true"
+
+  # Nginx reverse proxy for load balancing
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - mcp-network
+    depends_on:
+      - mcp-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  mcp-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: mcp-bridge
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  sessions_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/mcp-server/sessions
+  logs_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/mcp-server/logs
+  python_cache:
+    driver: local
+  node_cache:
+    driver: local
+  vscode_data:
+    driver: local
+  playwright_cache:
+    driver: local

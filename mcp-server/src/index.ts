@@ -12,16 +12,26 @@ import { SecurityManager } from './security/SecurityManager';
 import { Logger } from './utils/Logger';
 import { ConfigService } from './services/ConfigService';
 import { HealthService } from './services/HealthService';
+import cluster from 'cluster';
+import os from 'os';
 
 const logger = Logger.getInstance();
 const app = express();
 const server = createServer(app);
 
-// Performance middleware
+// Performance middleware optimized for GCP
 app.use(compression({
   threshold: 1024, // Only compress responses larger than 1KB
   level: 6, // Compression level 6 for good balance
-  memLevel: 8
+  memLevel: 8,
+  // GCP optimizations
+  filter: (req, res) => {
+    // Don't compress if the request includes a cache-control: no-transform directive
+    if (req.headers['cache-control'] && req.headers['cache-control'].includes('no-transform')) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
 }));
 
 // Security middleware
@@ -41,13 +51,22 @@ app.use(helmet({
   }
 }));
 
-// Rate limiting
+// Rate limiting optimized for GCP and LLM usage
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
+  max: 2000, // Increased for LLM usage patterns
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  // GCP optimizations
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health' || req.path === '/metrics';
+  },
+  keyGenerator: (req) => {
+    // Use X-Forwarded-For header for GCP load balancer
+    return req.headers['x-forwarded-for'] as string || req.ip;
+  }
 });
 app.use(globalLimiter);
 
