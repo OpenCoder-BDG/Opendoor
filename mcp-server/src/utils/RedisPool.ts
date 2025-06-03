@@ -66,14 +66,11 @@ export class RedisPool {
       db: this.options.db,
       // Optimized settings for GCP
       enableAutoPipelining: true,
-      maxLoadingTimeout: 5000,
       enableReadyCheck: true,
       keyPrefix: 'mcp:',
       lazyConnect: true,
       keepAlive: 30000,
       connectTimeout: 5000,
-      commandTimeout: 3000,
-      retryDelayOnFailover: 50,
       maxRetriesPerRequest: 2,
       enableOfflineQueue: false,
       family: 4
