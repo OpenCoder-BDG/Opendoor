@@ -158,7 +158,7 @@ export class ContainerManager {
   }
 
   private async createPrewarmedContainer(type: string): Promise<Docker.Container> {
-    const config = this.getContainerConfig(type);
+    const config = await this.getContainerConfig(type);
     
     const container = await this.docker.createContainer({
       ...config,
@@ -730,5 +730,50 @@ export class ContainerManager {
       this.logger.debug('Failed to get memory usage:', error);
     }
     return undefined;
+  }
+
+  private async getContainerConfig(type: string): Promise<any> {
+    // Return container configuration based on type
+    const baseConfig: any = {
+      Image: `opendoor/${type}:latest`,
+      AttachStdout: true,
+      AttachStderr: true,
+      Tty: true,
+      OpenStdin: true,
+      StdinOnce: false,
+      Labels: {
+        'mcp.type': type,
+        'mcp.managed': 'true'
+      },
+      HostConfig: {
+        Memory: this.parseMemorySize(process.env.CONTAINER_MEMORY || '512m'),
+        CpuQuota: parseInt(process.env.CONTAINER_CPU_QUOTA || '50000'),
+        NetworkMode: 'bridge',
+        AutoRemove: false,
+        RestartPolicy: { Name: 'no' }
+      }
+    };
+
+    // Add type-specific configurations
+    if (type === 'playwright') {
+      baseConfig.HostConfig.PortBindings = {
+        '9222/tcp': [{ HostPort: '0' }]
+      };
+    }
+
+    return baseConfig;
+  }
+
+  private async cleanupContainer(container: Docker.Container): Promise<void> {
+    try {
+      const info = await container.inspect();
+      if (info.State.Running) {
+        await container.kill();
+      }
+      await container.remove();
+      this.logger.debug('Cleaned up container:', info.Id.substring(0, 12));
+    } catch (error) {
+      this.logger.debug('Error cleaning up container:', error);
+    }
   }
 }

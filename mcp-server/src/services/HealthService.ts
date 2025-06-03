@@ -20,8 +20,7 @@ export class HealthService {
       // Connection optimizations
       socket: {
         connectTimeout: 5000,
-        commandTimeout: 3000,
-        keepAlive: true
+        keepAlive: 30000
       }
     });
   }

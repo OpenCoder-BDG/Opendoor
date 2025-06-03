@@ -65,7 +65,7 @@ const globalLimiter = rateLimit({
   },
   keyGenerator: (req) => {
     // Use X-Forwarded-For header for GCP load balancer
-    return req.headers['x-forwarded-for'] as string || req.ip;
+    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
   }
 });
 app.use(globalLimiter);
