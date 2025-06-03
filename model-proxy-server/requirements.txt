@@ -26,6 +26,7 @@ pandas
 aiofiles
 python-jose[cryptography]
 passlib[bcrypt]
+psutil
 
 # Development and Debugging
 pytest
